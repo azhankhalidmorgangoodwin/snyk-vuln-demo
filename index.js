@@ -1,29 +1,34 @@
 const express = require("express");
-const minimist = require("minimist");
+const bodyParser = require("body-parser");
 const _ = require("lodash");
-const axios = require("axios");
 
 const app = express();
+app.use(bodyParser.json());
 
-const args = minimist(process.argv.slice(2));
+// Vulnerable endpoint – user-controlled input flows into _.merge()
+app.post("/merge", (req, res) => {
+    const target = {};
 
-app.get("/", async (req, res) => {
-    res.send("Vulnerable Snyk Demo is running.");
+    // ❌ Exploitable: user input is merged directly
+    _.merge(target, req.body);
+
+    res.json({
+        message: "Merged successfully",
+        target
+    });
 });
 
-const polluted = _.merge({}, JSON.parse('{"__proto__": {"pwned": "yes"}}'));
-console.log("Prototype polluted? ->", {}.pwned);
+app.get("/", (req, res) => {
+    res.send("Prototype Pollution Demo running");
+});
 
-async function vulnerableRequest() {
-    try {
-        const result = await axios.get("http://example.com");
-        console.log(result.status);
-    } catch (e) {
-        console.log("Request failed");
+// Demonstrate pollution effect globally
+setInterval(() => {
+    if ({}.polluted) {
+        console.log("⚠️ GLOBAL OBJECT POLLUTED!", {}.polluted);
     }
-}
-vulnerableRequest();
+}, 2000);
 
 app.listen(3000, () => {
-    console.log("Running on port 3000");
+    console.log("Server running on port 3000");
 });
